@@ -146,7 +146,8 @@ elif choice == "Upload & Process":
                         tmp.write(unstruct_file.getvalue())
                         tmp_path = tmp.name
                     parser = ResumeParser()
-                    profile = parser.parse_file(tmp_path, ext)
+                    profile = parser.parse_file(tmp_path, ext,
+                                                filename_hint=unstruct_file.name)
                     if profile:
                         profile['source_type'] = 'resume'
                         profile['filename'] = unstruct_file.name
@@ -182,9 +183,15 @@ elif choice == "Upload & Process":
                                 matched.append(r)
                         
                         if not matched and records:
-                            # Fallback: if no match found, take first row
-                            records[0]['source_type'] = 'recruiter_csv'
-                            matched.append(records[0])
+                            # No match found — do NOT blindly add first row
+                            # Show a clear warning to the user instead
+                            st.warning(
+                                f"No CSV row matched the resume candidate "
+                                f"**'{resume_name or 'Unknown'}'**. "
+                                f"Found these names in CSV: "
+                                f"{[r.get('full_name','?') for r in records]}. "
+                                f"Only resume data will be used."
+                            )
                         
                         profiles.extend(matched)
                     elif ext == '.json':

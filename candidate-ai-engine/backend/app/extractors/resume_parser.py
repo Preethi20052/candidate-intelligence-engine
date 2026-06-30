@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from app.extractors.pdf_extractor import PDFExtractor
 from app.normalizers.base import Normalizer
 from loguru import logger
@@ -9,24 +9,38 @@ class ResumeParser:
     """
     Extracts structured data from unstructured resume files.
     Supports: PDF, DOCX, TXT
-    Handles edge cases: all-caps names, various phone/email formats,
-    honorific prefixes, multi-format skill lists.
+    Edge cases handled:
+    - All-caps names (NAVEEN KUMAR)
+    - Single-initial surnames (Naveen V)
+    - Honorific prefixes (Dr., Mr., Ms., Prof., Er., Smt.)
+    - Objective/summary/motivated lines falsely matching as names
+    - Indian phone numbers (10-digit, +91, with/without spaces)
+    - Multiple emails in resume
+    - Salary in LPA/k/crore format
+    - Fresher / entry-level experience detection
+    - City extraction from Indian cities list
     """
 
-    # Regex: name-like line — 2 to 5 words, each starting with a capital
-    NAME_PATTERN = re.compile(r'^[A-Z][a-zA-Z]+([\s][A-Z][a-zA-Z.]+){1,4}$')
+    # Name pattern: supports single-char initials like "Naveen V" or "R K Sharma"
+    NAME_PATTERN = re.compile(
+        r'^[A-Z][a-zA-Z]+([\s][A-Z][a-zA-Z]*\.?){1,4}$'
+    )
 
-    # Lines to skip when looking for the candidate name
-    SKIP_PATTERNS = re.compile(
-        r'(@|http|linkedin|github|://'
-        r'|curriculum|vitae|resume|cv\b'
-        r'|objective|summary|profile|skills'
-        r'|experience|education|contact|address'
-        r'|[|/\\:+•●])',
+    # Hard skip words — lines containing these are NEVER a candidate name
+    HARD_SKIP = re.compile(
+        r'\b(objective|summary|profile|career|about|contact|address'
+        r'|seeking|looking|motivated|dedicated|passionate|enthusiastic'
+        r'|graduate|fresher|professional|experienced|skilled|aspiring'
+        r'|engineer|developer|analyst|manager|designer|consultant'
+        r'|curriculum|vitae|resume|bba|bca|bsc|mca|mba|msc|btech|mtech'
+        r'|university|college|institute|school|bangalore|mumbai|delhi'
+        r'|chennai|hyderabad|pune|noida|coimbatore|india)\b'
+        r'|[@:/\\|•●\[\]{}]|http',
         re.IGNORECASE
     )
 
-    def parse_file(self, file_path: str, ext: str) -> Dict[str, Any]:
+    def parse_file(self, file_path: str, ext: str,
+                   filename_hint: str = "") -> Dict[str, Any]:
         text = ""
         ext = ext.lower()
         try:
@@ -46,23 +60,27 @@ class ResumeParser:
             logger.warning(f"Empty text extracted from: {file_path}")
             return {}
 
-        return self._parse_text(text)
+        return self._parse_text(text, filename_hint=filename_hint)
 
-    def _parse_text(self, text: str) -> Dict[str, Any]:
+    # ------------------------------------------------------------------
+    # Main Parse
+    # ------------------------------------------------------------------
+    def _parse_text(self, text: str, filename_hint: str = "") -> Dict[str, Any]:
+        name    = self._extract_name(text, filename_hint)
         emails  = Normalizer.extract_emails(text)
         phones  = Normalizer.extract_phones(text)
-        name    = self._extract_name(text)
         skills  = Normalizer.extract_skills_from_text(text)
         exp_yrs = self._extract_experience_years(text)
-        location= self._extract_location(text)
+        location = self._extract_location(text)
         salary  = self._extract_expected_salary(text)
+        links   = self._extract_links(text)
 
-        profile = {
-            "source_type"     : "resume",
-            "full_name"       : name,
-            "emails"          : emails,
-            "phones"          : phones,
-            "skills"          : skills,
+        profile: Dict[str, Any] = {
+            "source_type": "resume",
+            "full_name":   name,
+            "emails":      emails,
+            "phones":      phones,
+            "skills":      skills,
         }
         if exp_yrs is not None:
             profile["experience_years"] = exp_yrs
@@ -70,60 +88,112 @@ class ResumeParser:
             profile["location"] = location
         if salary is not None:
             profile["expected_salary"] = salary
+        if links:
+            profile["links"] = links
 
         logger.info(
             f"Resume parsed — name={name!r}, emails={emails}, "
-            f"phones={phones}, skills={len(skills)}, exp={exp_yrs}"
+            f"phones={phones}, skills={len(skills)}, exp={exp_yrs}, loc={location}"
         )
         return profile
 
     # ------------------------------------------------------------------
-    # Name Extraction
+    # Name Extraction — Most Critical
     # ------------------------------------------------------------------
-    def _extract_name(self, text: str) -> str:
+    def _extract_name(self, text: str, filename_hint: str = "") -> str:
         """
-        Heuristic name extraction from the top of a resume.
-        - Skips lines with emails, phones, URLs, section headings
-        - Handles all-caps names (NAVEEN KUMAR)
-        - Strips honorifics (Dr., Mr., Ms.)
-        - Matches 2–5 capitalized words
+        Multi-strategy name extraction:
+        1. Try filename hint (e.g. "Naveen_V.pdf" → "Naveen V")
+        2. Scan first 40 lines for a clean name-like line
+        3. Return "Unknown" if all strategies fail
         """
+        # Strategy 1: Extract from filename (most reliable signal)
+        if filename_hint:
+            name_from_file = self._name_from_filename(filename_hint)
+            if name_from_file and name_from_file != "Unknown":
+                logger.info(f"Name extracted from filename: {name_from_file!r}")
+                return name_from_file
+
+        # Strategy 2: Scan top lines of resume text
         lines = [l.strip() for l in text.splitlines() if l.strip()]
-        for line in lines[:20]:
-            if self.SKIP_PATTERNS.search(line):
+        for line in lines[:40]:
+            # Skip very long lines (paragraphs)
+            if len(line) > 50:
                 continue
-            # Skip if mostly digits (phone/zip)
-            if len(re.sub(r'\D', '', line)) > 5:
+            # Skip lines matching hard-skip patterns
+            if self.HARD_SKIP.search(line):
                 continue
-            # Normalize all-caps line before matching
+            # Skip if too many digits (phone/ID/year)
+            digit_count = len(re.sub(r'\D', '', line))
+            if digit_count > 4:
+                continue
+            # Skip lines with non-name punctuation
+            if any(c in line for c in [',', ';', '(', ')', '+', '=', '_', '"', "'"]):
+                continue
+            # Skip very short words (likely single-word section headers)
+            words = line.split()
+            if len(words) < 2:
+                continue
+
+            # Normalize casing: all-caps → title case
             candidate = line.title() if line.isupper() else line
-            # Remove honorifics
             candidate_clean = Normalizer.normalize_name(candidate)
-            if not candidate_clean:
+            if not candidate_clean or len(candidate_clean) < 5:
                 continue
-            # Check it looks like a name
+
+            # Check name pattern (allows single-char initials)
             if self.NAME_PATTERN.match(candidate_clean):
+                logger.info(f"Name extracted from text: {candidate_clean!r}")
                 return candidate_clean
-        return Normalizer.normalize_name(lines[0]) if lines else "Unknown"
+
+        logger.warning("Could not extract name from resume text or filename")
+        return "Unknown"
+
+    def _name_from_filename(self, filename: str) -> str:
+        """
+        Extract candidate name from filename.
+        e.g. "Naveen_V.pdf" → "Naveen V"
+             "naveen_kumar_resume.pdf" → "Naveen Kumar"
+             "Resume_2024.pdf" → skip (generic filename)
+        """
+        # Remove extension
+        stem = re.sub(r'\.[a-zA-Z0-9]+$', '', filename).strip()
+        # Replace underscores, hyphens, dots with spaces
+        stem = re.sub(r'[_\-.]', ' ', stem)
+        # Remove common generic words
+        stem = re.sub(
+            r'\b(resume|cv|curriculum|vitae|updated|new|final|copy'
+            r'|\d{4}|\d{2})\b',
+            '', stem, flags=re.IGNORECASE
+        ).strip()
+        # Clean up extra spaces
+        stem = ' '.join(stem.split())
+        if not stem or len(stem) < 4:
+            return "Unknown"
+        # Must look like a name
+        candidate = Normalizer.normalize_name(stem)
+        if candidate and self.NAME_PATTERN.match(candidate):
+            return candidate
+        return "Unknown"
 
     # ------------------------------------------------------------------
     # Experience Years
     # ------------------------------------------------------------------
-    def _extract_experience_years(self, text: str) -> Any:
+    def _extract_experience_years(self, text: str) -> Optional[float]:
         """
-        Extract years of experience from resume text.
-        Handles: "2 years experience", "2+ years", "Fresher", "Entry Level"
+        Handles: "2 years", "2+ years", "2.5 years exp",
+                 "Fresher", "Entry Level", "0-1 years", "Less than 1 year"
         """
-        # Fresher / Entry level
-        if re.search(r'\b(fresher|fresh graduate|entry.?level|no experience)\b', text, re.IGNORECASE):
+        text_l = text.lower()
+        if re.search(r'\b(fresher|fresh graduate|entry.?level|no experience'
+                     r'|0 year|less than 1)\b', text_l):
             return 0.0
 
-        # Explicit mention: "5 years of experience"
-        m = re.search(r'(\d+\.?\d*)\s*\+?\s*years?\s*(of\s*)?(experience|exp)', text, re.IGNORECASE)
+        m = re.search(r'(\d+\.?\d*)\s*\+?\s*years?\s*(of\s*)?(experience|exp)',
+                      text, re.IGNORECASE)
         if m:
             return float(m.group(1))
 
-        # "Experience: 3 years"
         m = re.search(r'(experience|exp)[:\s]+(\d+\.?\d*)', text, re.IGNORECASE)
         if m:
             return float(m.group(2))
@@ -134,41 +204,62 @@ class ResumeParser:
     # Location
     # ------------------------------------------------------------------
     def _extract_location(self, text: str) -> str:
-        """Extract city/location from resume."""
-        # Look for "Location: Bangalore" or "City: Mumbai"
-        m = re.search(r'(location|city|address)[:\s]+([A-Z][a-zA-Z\s,]+?)(?:\n|$)',
-                      text, re.IGNORECASE)
+        """
+        Extract city/location from resume.
+        Checks explicit labels first, then scans for Indian city names.
+        """
+        # Explicit: "Location: Bangalore" or "City: Mumbai, India"
+        m = re.search(
+            r'(location|city|address|place|based\s*at)[:\s]+([A-Za-z][a-zA-Z\s,]{2,30}?)(?:\n|,|$)',
+            text, re.IGNORECASE
+        )
         if m:
-            return m.group(2).strip().split('\n')[0].strip()
+            loc = m.group(2).strip().rstrip(',').strip()
+            if 4 <= len(loc) <= 40:
+                return loc.title()
 
-        # Common Indian cities mentioned in resume
-        cities = [
-            'Bangalore', 'Bengaluru', 'Mumbai', 'Delhi', 'Hyderabad',
-            'Chennai', 'Pune', 'Kolkata', 'Ahmedabad', 'Jaipur',
-            'Noida', 'Gurugram', 'Gurgaon', 'Kochi', 'Coimbatore',
+        # Scan for known Indian cities
+        CITIES = [
+            'Bangalore', 'Bengaluru', 'Mumbai', 'Delhi', 'New Delhi',
+            'Hyderabad', 'Chennai', 'Pune', 'Kolkata', 'Ahmedabad',
+            'Jaipur', 'Noida', 'Gurugram', 'Gurgaon', 'Kochi',
+            'Coimbatore', 'Surat', 'Vadodara', 'Bhopal', 'Indore',
+            'Nagpur', 'Visakhapatnam', 'Mysore', 'Mangalore',
+            'Thiruvananthapuram', 'Bhubaneswar', 'Patna', 'Lucknow',
         ]
-        for city in cities:
-            if re.search(r'\b' + city + r'\b', text, re.IGNORECASE):
+        for city in CITIES:
+            if re.search(r'\b' + re.escape(city) + r'\b', text, re.IGNORECASE):
                 return city
         return ""
 
     # ------------------------------------------------------------------
     # Expected Salary
     # ------------------------------------------------------------------
-    def _extract_expected_salary(self, text: str) -> Any:
-        """Extract expected salary from resume text."""
-        m = re.search(
-            r'(expected|desired|current|ctc)[^\n]*salary[:\s]*([\d,.\s]+(?:lpa|l|lakhs?|k)?)',
-            text, re.IGNORECASE
-        )
-        if m:
-            return Normalizer.normalize_salary(m.group(2))
-
-        m = re.search(
-            r'salary[:\s]*([\d,.\s]+(?:lpa|l|lakhs?|k)?)',
-            text, re.IGNORECASE
-        )
-        if m:
-            return Normalizer.normalize_salary(m.group(1))
-
+    def _extract_expected_salary(self, text: str) -> Optional[float]:
+        """
+        Handles: "Expected Salary: 7 LPA", "CTC: 8.5L",
+                 "Salary: 7,00,000", "Expected: 85k"
+        """
+        patterns = [
+            r'(expected|desired|target|current)\s*(?:ctc|salary|package)[:\s]*([\d,.\s]+(?:lpa|l|cr|lakhs?|crore|k)?)',
+            r'(?:ctc|salary|package)[:\s]*([\d,.\s]+(?:lpa|l|cr|lakhs?|crore|k)?)',
+            r'([\d,.\s]+(?:lpa|l))\s*(?:per annum|pa\b)',
+        ]
+        for pat in patterns:
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
+                raw = m.group(m.lastindex)
+                result = Normalizer.normalize_salary(raw)
+                if result and result > 0:
+                    return result
         return None
+
+    # ------------------------------------------------------------------
+    # Links (GitHub / LinkedIn)
+    # ------------------------------------------------------------------
+    def _extract_links(self, text: str) -> List[str]:
+        """Extract GitHub and LinkedIn profile URLs from resume."""
+        url_pattern = re.compile(
+            r'https?://(?:www\.)?(?:github\.com|linkedin\.com)/[^\s\n,;>"\']+'
+        )
+        return list(set(url_pattern.findall(text)))

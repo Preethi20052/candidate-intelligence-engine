@@ -1,5 +1,6 @@
 import csv
 import io
+import re
 from typing import List, Dict, Any
 from app.normalizers.base import Normalizer
 from loguru import logger
