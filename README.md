@@ -14,6 +14,9 @@
 **Streamlit Application:**  
 https://preethi-candidate-engine.streamlit.app/
 
+<div align="center">
+  <img src="docs/home.png" alt="Candidate Intelligence Engine Dashboard" width="850">
+</div>
 
 ---
 
