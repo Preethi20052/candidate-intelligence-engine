@@ -116,8 +116,136 @@ menu = ["Home", "Upload & Process", "Results & Analytics", "Configuration"]
 choice = st.sidebar.radio("Navigation", menu)
 
 if choice == "Home":
-    st.header("Overview")
-    st.write("Welcome to the Eightfold Candidate Intelligence Engine.")
+
+    # ── 1. OVERVIEW ─────────────────────────────────────────────────
+    st.markdown("""
+<div style="background:white; padding:28px 32px; border-radius:14px;
+            box-shadow:0 2px 12px rgba(0,0,0,0.06); margin-bottom:24px;">
+    <h2 style="margin:0 0 10px 0; color:#1E3A8A; font-size:1.3rem; font-weight:700;
+               letter-spacing:0.3px;">Overview</h2>
+    <p style="margin:0; color:#475569; font-size:1rem; line-height:1.75;">
+        <b>Candidate Intelligence Engine</b> is a deterministic AI engineering application that
+        transforms structured and unstructured candidate data into a unified canonical profile
+        using configurable projection, provenance tracking, confidence scoring, and validation.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── 2. PROCESSING PIPELINE ───────────────────────────────────────
+    st.markdown("""
+<div style="background:white; padding:28px 32px; border-radius:14px;
+            box-shadow:0 2px 12px rgba(0,0,0,0.06); margin-bottom:24px;">
+    <h2 style="margin:0 0 20px 0; color:#1E3A8A; font-size:1.3rem; font-weight:700;">
+        Processing Pipeline
+    </h2>
+    <div style="display:flex; flex-direction:column; align-items:flex-start; gap:0;">
+""", unsafe_allow_html=True)
+
+    pipeline_steps = [
+        ("🔎", "Source Detection",    "Identifies file types and URL sources"),
+        ("📄", "Extraction",          "Parses entities using deterministic regex"),
+        ("⚙️", "Normalization",       "E.164 · lowercase · YYYY-MM · ISO-3166"),
+        ("🔗", "Entity Resolution",   "Matches candidates across sources by name"),
+        ("🔀", "Conflict Resolution", "Priority ranking resolves conflicting values"),
+        ("🗄️", "Canonical Profile",   "Immutable master record with full provenance"),
+        ("🎛️", "Projection",          "Runtime config reshapes the output schema"),
+        ("✅", "Validation",          "Pydantic validates every projected output"),
+    ]
+
+    for i, (icon, title, desc) in enumerate(pipeline_steps):
+        connector = "" if i == len(pipeline_steps) - 1 else """
+<div style="width:2px; height:18px; background:#BFDBFE; margin-left:19px;"></div>"""
+        st.markdown(f"""
+<div style="display:flex; align-items:center; gap:14px;">
+    <div style="width:38px; height:38px; border-radius:50%; background:#EFF6FF;
+                border:2px solid #3B82F6; display:flex; align-items:center;
+                justify-content:center; font-size:1rem; flex-shrink:0;">{icon}</div>
+    <div>
+        <span style="font-weight:700; color:#1E3A8A; font-size:0.95rem;">{title}</span>
+        <span style="color:#64748B; font-size:0.85rem; margin-left:10px;">{desc}</span>
+    </div>
+</div>{connector}
+""", unsafe_allow_html=True)
+
+    st.markdown("</div></div>", unsafe_allow_html=True)
+
+    # ── 3. SUPPORTED INPUT SOURCES ───────────────────────────────────
+    st.markdown("""
+<h2 style="color:#1E3A8A; font-size:1.3rem; font-weight:700; margin-bottom:14px;">
+    Supported Input Sources
+</h2>
+""", unsafe_allow_html=True)
+
+    src_col1, src_col2 = st.columns(2)
+    with src_col1:
+        st.markdown("""
+<div style="background:white; padding:24px 28px; border-radius:14px;
+            box-shadow:0 2px 12px rgba(0,0,0,0.06); height:100%;">
+    <div style="font-size:0.7rem; font-weight:700; letter-spacing:1.5px;
+                color:#3B82F6; margin-bottom:12px; text-transform:uppercase;">
+        Structured Sources
+    </div>
+    <ul style="margin:0; padding-left:18px; color:#334155; line-height:2.0; font-size:0.95rem;">
+        <li>Recruiter CSV</li>
+        <li>ATS JSON Export</li>
+    </ul>
+</div>
+""", unsafe_allow_html=True)
+
+    with src_col2:
+        st.markdown("""
+<div style="background:white; padding:24px 28px; border-radius:14px;
+            box-shadow:0 2px 12px rgba(0,0,0,0.06); height:100%;">
+    <div style="font-size:0.7rem; font-weight:700; letter-spacing:1.5px;
+                color:#06B6D4; margin-bottom:12px; text-transform:uppercase;">
+        Unstructured Sources
+    </div>
+    <ul style="margin:0; padding-left:18px; color:#334155; line-height:2.0; font-size:0.95rem;">
+        <li>Resume PDF</li>
+        <li>Resume DOCX</li>
+        <li>Recruiter Notes TXT</li>
+        <li>GitHub Profile URL</li>
+    </ul>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── 4. SYSTEM HIGHLIGHTS ─────────────────────────────────────────
+    st.markdown("""
+<h2 style="color:#1E3A8A; font-size:1.3rem; font-weight:700;
+           margin-top:28px; margin-bottom:14px;">
+    System Highlights
+</h2>
+""", unsafe_allow_html=True)
+
+    highlights = [
+        ("🔁", "Deterministic Processing",
+         "Same input always produces identical output. No randomness, no LLMs."),
+        ("🎛️", "Runtime Configurable Projection",
+         "Rename fields, subset, and toggle provenance — zero code changes."),
+        ("🎯", "Confidence Scoring",
+         "Weighted confidence computed per-field and aggregated as an overall score."),
+        ("📜", "Provenance Tracking",
+         "Every value carries its source, method, confidence, and timestamp."),
+        ("✅", "Pydantic Validation",
+         "Strict schema validation on every projected output before it is served."),
+        ("💡", "Explainable Decisions",
+         "Every conflict resolution decision is auditable and fully traceable."),
+    ]
+
+    h_col1, h_col2, h_col3 = st.columns(3)
+    cols = [h_col1, h_col2, h_col3]
+    for i, (icon, title, desc) in enumerate(highlights):
+        with cols[i % 3]:
+            st.markdown(f"""
+<div style="background:white; padding:22px 20px; border-radius:14px;
+            box-shadow:0 2px 12px rgba(0,0,0,0.06); margin-bottom:16px;
+            border-top:3px solid #3B82F6;">
+    <div style="font-size:1.6rem; margin-bottom:10px;">{icon}</div>
+    <div style="font-weight:700; color:#1E3A8A; font-size:0.95rem;
+                margin-bottom:6px;">{title}</div>
+    <div style="color:#64748B; font-size:0.83rem; line-height:1.6;">{desc}</div>
+</div>
+""", unsafe_allow_html=True)
 
 elif choice == "Upload & Process":
     st.header("Upload Sources")
