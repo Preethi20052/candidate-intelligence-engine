@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Candidate Intelligence Engine — Technical Design</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: #0f172a;
+    background: #fff;
+    padding: 32px 40px;
+    line-height: 1.55;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2.5px solid #1e3a8a;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+  }
+  .header-left h1 {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1e3a8a;
+    letter-spacing: -0.3px;
+  }
+  .header-left p {
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+  .header-right {
+    text-align: right;
+    font-size: 10px;
+    color: #64748b;
+    line-height: 1.7;
+  }
+  .badge {
+    display: inline-block;
+    background: #1e3a8a;
+    color: white;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .grid-pipeline { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; margin-bottom: 10px; }
+
+  /* ── CARD ── */
+  .card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .card-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #1e3a8a;
+    margin-bottom: 7px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+  }
+
+  /* ── PIPELINE ── */
+  .pipe-step {
+    background: #1e3a8a;
+    color: white;
+    border-radius: 6px;
+    padding: 7px 4px;
+    text-align: center;
+    font-size: 8.5px;
+    font-weight: 600;
+    position: relative;
+  }
+  .pipe-step .icon { font-size: 13px; display: block; margin-bottom: 3px; }
+  .pipe-step .sub { font-size: 7.5px; font-weight: 400; color: #93c5fd; margin-top: 2px; display: block; }
+  .pipe-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #1e3a8a;
+    font-weight: 700;
+  }
+  .grid-pipeline-inner {
+    display: grid;
+    grid-template-columns: 1fr 18px 1fr 18px 1fr 18px 1fr 18px 1fr 18px 1fr 18px 1fr;
+    gap: 0;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  th {
+    background: #1e3a8a;
+    color: white;
+    padding: 5px 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 9px;
+  }
+  td { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  code {
+    font-family: 'Courier New', monospace;
+    background: #eff6ff;
+    color: #1d4ed8;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 9.5px;
+  }
+
+  /* ── EDGE CASES ── */
+  .edge-item {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 5px;
+    align-items: flex-start;
+  }
+  .edge-tag {
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 8px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    white-space: nowrap;
+    margin-top: 1px;
+  }
+  .edge-text { font-size: 10px; color: #334155; }
+
+  /* ── SCHEMA BOX ── */
+  .schema-box {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    line-height: 1.7;
+  }
+  .k { color: #93c5fd; }
+  .v { color: #86efac; }
+  .s { color: #fde68a; }
+  .c { color: #94a3b8; font-style: italic; }
+
+  /* ── POLICY ITEM ── */
+  .policy-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3.5px 0;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 10px;
+  }
+  .policy-row:last-child { border-bottom: none; }
+  .policy-label { color: #334155; font-weight: 500; }
+  .policy-val { color: #1e3a8a; font-weight: 700; font-size: 9.5px; }
+
+  /* ── HIGHLIGHT PILL ── */
+  .pill {
+    display: inline-block;
+    background: #dbeafe;
+    color: #1e40af;
+    font-size: 8.5px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+    margin: 2px 2px 2px 0;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 12px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 6px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #94a3b8;
+  }
+
+  @media print {
+    body { padding: 20px 28px; }
+    @page { margin: 0; size: A4; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ HEADER ══════════════════ -->
+<div class="header">
+  <div class="header-left">
+    <span class="badge">Step 1 · Technical Design</span>
+    <h1>Candidate Intelligence Engine</h1>
+    <p>Multi-Source Deterministic Candidate Data Pipeline · Eightfold AI Engineering Internship</p>
+  </div>
+  <div class="header-right">
+    <strong>Preethi S</strong><br/>
+    prepreethi2611@gmail.com<br/>
+    github.com/Preethi20052/candidate-intelligence-engine
+  </div>
+</div>
+
+<!-- ══════════════════ PIPELINE ══════════════════ -->
+<div class="card" style="margin-bottom:10px;">
+  <div class="card-title">Pipeline · Step Breakdown</div>
+  <div class="grid-pipeline-inner">
+    <div class="pipe-step"><span class="icon">🔎</span>Detect<span class="sub">File type &amp; URL identification</span></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><span class="icon">📄</span>Extract<span class="sub">Regex entity extraction</span></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><span class="icon">⚙️</span>Normalize<span class="sub">E.164 · ISO · YYYY-MM</span></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><span class="icon">🔀</span>Merge<span class="sub">Priority conflict resolution</span></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><span class="icon">🎯</span>Confidence<span class="sub">Per-field scoring</span></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><span class="icon">🎛️</span>Project<span class="sub">Runtime config output</span></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><span class="icon">✅</span>Validate<span class="sub">Pydantic schema check</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════ ROW 2 ══════════════════ -->
+<div class="grid-2">
+
+  <!-- CANONICAL SCHEMA -->
+  <div class="card">
+    <div class="card-title">Canonical Output Schema · Normalized Formats</div>
+    <div class="schema-box">
+<span class="c">// Internal Canonical Record (master, never mutated)</span>
+{
+  <span class="k">"full_name"</span>: <span class="s">"Preethi S"</span>,
+  <span class="k">"emails"</span>:   [<span class="s">"prepreethi2611@gmail.com"</span>],  <span class="c">// lowercase</span>
+  <span class="k">"phones"</span>:   [<span class="s">"+918778524631"</span>],              <span class="c">// E.164</span>
+  <span class="k">"skills"</span>:   [<span class="s">"Java"</span>, <span class="s">"Spring Boot"</span>, <span class="s">"React"</span>], <span class="c">// canonical</span>
+  <span class="k">"location"</span>: { <span class="k">"city"</span>: <span class="s">"Coimbatore"</span>,
+                 <span class="k">"region"</span>: <span class="s">"Tamil Nadu"</span>, <span class="k">"country"</span>: <span class="s">"IN"</span> },
+  <span class="k">"education"</span>: { <span class="k">"degree"</span>: <span class="s">"Bachelor of Engineering"</span>,
+                  <span class="k">"field"</span>: <span class="s">"Computer Science"</span> },
+  <span class="k">"overall_confidence"</span>: <span class="v">0.825</span>,
+  <span class="k">"field_provenance"</span>: {
+    <span class="k">"full_name"</span>: { <span class="k">"source"</span>: <span class="s">"resume"</span>, <span class="k">"method"</span>: <span class="s">"regex"</span>,
+      <span class="k">"confidence"</span>: <span class="v">0.85</span>, <span class="k">"normalized"</span>: <span class="v">true</span>,
+      <span class="k">"validated"</span>: <span class="v">true</span>, <span class="k">"timestamp"</span>: <span class="s">"2026-06-30T08:50:19Z"</span> }
+  }
+}
+    </div>
+  </div>
+
+  <!-- MERGE POLICY -->
+  <div class="card">
+    <div class="card-title">Merge · Conflict Resolution Policy</div>
+
+    <div style="margin-bottom:8px;">
+      <div style="font-size:9px; font-weight:700; color:#475569; margin-bottom:4px;">Priority Rank (configurable at runtime)</div>
+      <div class="policy-row"><span class="policy-label">1st — Resume</span><span class="policy-val">confidence 0.85</span></div>
+      <div class="policy-row"><span class="policy-label">2nd — LinkedIn</span><span class="policy-val">confidence 0.90</span></div>
+      <div class="policy-row"><span class="policy-label">3rd — ATS JSON</span><span class="policy-val">confidence 0.95</span></div>
+      <div class="policy-row"><span class="policy-label">4th — Recruiter CSV</span><span class="policy-val">confidence 0.80</span></div>
+      <div class="policy-row"><span class="policy-label">5th — GitHub</span><span class="policy-val">confidence 0.75</span></div>
+    </div>
+
+    <div style="font-size:9px; font-weight:700; color:#475569; margin-bottom:4px;">Field Merge Strategy</div>
+    <div class="policy-row"><span class="policy-label">Scalar fields (name, role)</span><span class="policy-val">Highest-priority source wins</span></div>
+    <div class="policy-row"><span class="policy-label">Array fields (emails, phones, skills)</span><span class="policy-val">Deduplicated UNION across all sources</span></div>
+    <div class="policy-row"><span class="policy-label">Conflict detection</span><span class="policy-val">Word-intersection name matching</span></div>
+    <div class="policy-row"><span class="policy-label">Overall confidence</span><span class="policy-val">Weighted average of all field confidences</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════ ROW 3 ══════════════════ -->
+<div class="grid-2">
+
+  <!-- PROJECTION + VALIDATION -->
+  <div class="card">
+    <div class="card-title">Projection Layer · Runtime Custom-Output Config</div>
+    <p style="font-size:10px; color:#475569; margin-bottom:7px;">
+      The <strong>ProjectionEngine</strong> accepts a JSON config at runtime and reshapes the
+      Canonical Record into any output schema — <strong>zero backend code changes required.</strong>
+    </p>
+    <table>
+      <tr><th>Config Parameter</th><th>Options</th><th>Effect</th></tr>
+      <tr><td><code>from</code></td><td>Any canonical key or <code>emails[0]</code></td><td>Maps and renames fields</td></tr>
+      <tr><td><code>include_provenance</code></td><td><code>true</code> / <code>false</code></td><td>Attaches or strips provenance block</td></tr>
+      <tr><td><code>include_confidence</code></td><td><code>true</code> / <code>false</code></td><td>Includes or hides confidence score</td></tr>
+      <tr><td><code>on_missing</code></td><td><code>null</code> / <code>omit</code> / <code>error</code></td><td>Controls missing field behaviour</td></tr>
+    </table>
+    <div style="margin-top:8px; font-size:9px; color:#475569;">
+      <strong>Validation:</strong> Every projected output is validated by a strict
+      <strong>Pydantic v2</strong> model before serving. Returns
+      <code>{"status":"PASSED"}</code> or structured validation errors.
+    </div>
+  </div>
+
+  <!-- EDGE CASES -->
+  <div class="card">
+    <div class="card-title">Edge Cases · Handled vs Deliberately Descoped</div>
+
+    <div style="font-size:9px; font-weight:700; color:#15803d; margin-bottom:4px;">✓ Handled</div>
+
+    <div class="edge-item">
+      <span class="edge-tag">PHONE</span>
+      <span class="edge-text">LinkedIn profile ID (9-digit number) falsely parsed as phone — URLs stripped before phone regex runs.</span>
+    </div>
+    <div class="edge-item">
+      <span class="edge-tag">NAME</span>
+      <span class="edge-text">Filename <code>Preethi_AI_RESUME.pdf</code> extracts "Preethi AI" — domain words blacklisted before filename parsing.</span>
+    </div>
+    <div class="edge-item">
+      <span class="edge-tag">BLEED</span>
+      <span class="edge-text">Cross-candidate data bleed — word-intersection matching prevents "Preethi S" merging with "Naveen V" CSV row.</span>
+    </div>
+    <div class="edge-item">
+      <span class="edge-tag">OCR</span>
+      <span class="edge-text">Invisible zero-width spaces <code>\u200b</code> in PDF text break email regex — stripped at ingestion.</span>
+    </div>
+    <div class="edge-item">
+      <span class="edge-tag">ENCODE</span>
+      <span class="edge-text">Non-UTF8 CSV files — auto-fallback chain: <code>utf-8-sig</code> → <code>latin-1</code>.</span>
+    </div>
+
+    <div style="font-size:9px; font-weight:700; color:#b45309; margin-top:7px; margin-bottom:4px;">⊘ Deliberately Descoped</div>
+    <div style="font-size:9px; color:#64748b; line-height:1.6;">
+      <strong>Scanned image PDFs (OCR)</strong> — no text layer extractable; flagged gracefully but not processed.<br/>
+      <strong>Live GitHub API rate limiting</strong> — stub implementation; real-time scraping out of scope to prioritise robust merging logic.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ FOOTER ══════════════════ -->
+<div class="footer">
+  <span>Candidate Intelligence Engine · Eightfold AI Engineering Internship · Step 1 Technical Design</span>
+  <span>Preethi S · prepreethi2611@gmail.com</span>
+</div>
+
+</body>
+</html>
