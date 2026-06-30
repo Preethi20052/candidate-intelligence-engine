@@ -38,6 +38,84 @@ The final output is a configurable JSON profile generated without modifying appl
 
 ---
 
+# System Architecture
+
+```
+                           Candidate Intelligence Engine
+
++--------------------------------------------------------------------------------+
+|                                 Streamlit Dashboard                            |
+|--------------------------------------------------------------------------------|
+| Upload Resume | Upload Recruiter CSV | Upload ATS JSON | Runtime Configuration |
+| Results | AI Insights | Canonical Profile | Projected JSON | Downloads          |
++----------------------------------------+---------------------------------------+
+                                         |
+                                         | HTTP Requests
+                                         ▼
++--------------------------------------------------------------------------------+
+|                                  FastAPI Backend                               |
+|--------------------------------------------------------------------------------|
+|                           REST API & Request Handling                          |
++----------------------------------------+---------------------------------------+
+                                         |
+                                         ▼
++--------------------------------------------------------------------------------+
+|                           Candidate Processing Pipeline                        |
+|--------------------------------------------------------------------------------|
+| 1. Source Detection                                                     |
+| 2. Data Extraction                                                      |
+| 3. Data Normalization                                                   |
+| 4. Canonicalization                                                     |
+| 5. Entity Resolution                                                    |
+| 6. Conflict Resolution                                                  |
+| 7. Confidence Scoring                                                   |
+| 8. Provenance Tracking                                                  |
+| 9. Runtime Projection                                                   |
+|10. Pydantic Validation                                                  |
++----------------------------------------+---------------------------------------+
+                                         |
+                                         ▼
++--------------------------------------------------------------------------------+
+|                               Internal Canonical Profile                       |
+|--------------------------------------------------------------------------------|
+| Full Name | Email | Phone | Skills | Education | Experience | Location         |
+| Confidence Score | Provenance | Metadata | Source Information                  |
++----------------------------------------+---------------------------------------+
+                                         |
+                                         ▼
++--------------------------------------------------------------------------------+
+|                              Runtime Projection Layer                          |
+|--------------------------------------------------------------------------------|
+| Dynamic Field Selection | Field Renaming | Missing Value Policy                |
+| Include/Exclude Provenance | Include/Exclude Confidence                        |
++----------------------------------------+---------------------------------------+
+                                         |
+                                         ▼
++--------------------------------------------------------------------------------+
+|                                 Final Output                                   |
+|--------------------------------------------------------------------------------|
+| Validated JSON | JSON Download | Dashboard Visualizations                      |
++--------------------------------------------------------------------------------+
+```
+
+---
+
+## Architecture Components
+
+| Component | Responsibility |
+|-----------|----------------|
+| **Streamlit Dashboard** | User interface for uploading files, configuring runtime settings, and visualizing results. |
+| **FastAPI Backend** | Exposes REST APIs and orchestrates the complete processing pipeline. |
+| **Extractors** | Parse structured (CSV, ATS JSON) and unstructured (PDF, DOCX, TXT) inputs. |
+| **Normalizers** | Standardize emails, phone numbers, dates, locations, skills, and experience. |
+| **Merge Engine** | Resolves duplicate entities and conflicting values using configurable source priority. |
+| **Canonical Profile** | Stores the immutable, normalized candidate record with provenance metadata. |
+| **Projection Layer** | Generates customized JSON outputs based on runtime YAML/JSON configuration. |
+| **Validation Layer** | Validates projected output using Pydantic schemas before returning results. |
+| **Streamlit Dashboard** | Displays canonical profile, projected JSON, AI insights, and validation status. |
+
+---
+
 # Features
 
 ## Supported Input Sources
