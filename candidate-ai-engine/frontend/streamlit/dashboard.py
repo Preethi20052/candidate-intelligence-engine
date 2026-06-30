@@ -218,8 +218,9 @@ elif choice == "Upload & Process":
                         "fields": [
                             {"path": "candidate_full_name", "from": "full_name"},
                             {"path": "primary_contact_email", "from": "emails[0]"},
-                            {"path": "verified_phone", "from": "phones[0]", "normalize": "E164"}
+                            {"path": "verified_phone", "from": "phones[0]"}
                         ],
+                        "include_provenance": False,
                         "include_confidence": False,
                         "on_missing": "omit"
                     }

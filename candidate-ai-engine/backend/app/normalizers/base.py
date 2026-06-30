@@ -216,19 +216,21 @@ class Normalizer:
         else:
             raw_list = re.split(r'[;,|\n]', str(skills_raw))
 
-        seen, result = set(), []
-        for item in raw_list:
-            skill = item.strip().strip('"').strip("'")
+        unique_skills = []
+        for s in raw_list:
+            skill = s.strip().strip('"').strip("'")
             if not skill:
                 continue
             # Check alias map first
             canonical = SKILL_ALIASES.get(skill.lower(), skill)
+            # Remove non-skill technologies based on exact match or substring
+            if "github" in canonical.lower() or "git hub" in canonical.lower():
+                continue
             # Remove version numbers for deduplication key: "Python 3.9" -> "Python"
             key = re.sub(r'\s*[\d.]+$', '', canonical).strip().lower()
-            if key not in seen:
-                seen.add(key)
-                result.append(canonical)
-        return result
+            if key not in [re.sub(r'\s*[\d.]+$', '', us).strip().lower() for us in unique_skills]:
+                unique_skills.append(canonical)
+        return unique_skills
 
     @staticmethod
     def extract_skills_from_text(text: str) -> List[str]:

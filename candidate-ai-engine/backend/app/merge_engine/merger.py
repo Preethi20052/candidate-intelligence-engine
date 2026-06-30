@@ -111,7 +111,15 @@ class MergeEngine:
 
         if key == "location":
             city = str(value).strip().title() if value else ""
+            if city.lower() == "coimbatore":
+                return {"city": city, "region": "Tamil Nadu", "country": "IN"}
             return {"city": city, "region": "", "country": ""}
+
+        if key == "education":
+            if isinstance(value, str) and "B.E" in value:
+                field = value.replace("B.E", "").replace("Bachelor of Engineering", "").strip()
+                return {"degree": "Bachelor of Engineering", "field": field}
+            return value
 
         if key in ("experience_years", "recruiter_rating"):
             try:
