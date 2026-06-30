@@ -263,6 +263,7 @@ elif choice == "Upload & Process":
         struct_file = st.file_uploader("Upload ATS/Recruiter Data", type=["csv", "json"])
         
     if st.button("Process Pipeline"):
+        st.session_state.canonical_profile = None  # Clear previous data
         if unstruct_file or struct_file or github_url or linkedin_url:
             with st.spinner("Executing Deterministic Pipeline..."):
                 profiles = []
