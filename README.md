@@ -14,9 +14,6 @@
 **Streamlit Application:**  
 https://preethi-candidate-engine.streamlit.app/
 
-**Step 1 Technical Design (PDF):**  
-[Preethi_S_prepreethi2611_Eightfold.pdf](./Preethi_S_prepreethi2611_Eightfold.pdf)
-
 <div align="center">
   <img src="docs/home.png" alt="Candidate Intelligence Engine Dashboard" width="850">
 </div>
