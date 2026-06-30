@@ -1,0 +1,23 @@
+Naveen V
+
+Email: naveen.v@gmail.com
+Phone: +91 9876543210
+Location: Bangalore, India
+
+OBJECTIVE
+Seeking a challenging Software Developer role to leverage my Python and AI skills.
+
+SKILLS
+Python, FastAPI, Streamlit, Machine Learning, SQL, Docker, Git, REST API
+
+EXPERIENCE
+Software Developer | Fresher | 2024 - Present
+- Built REST APIs using FastAPI
+- Worked on Machine Learning models
+
+EDUCATION
+B.E Computer Science | VTU | 2024
+
+PREFERRED ROLE: AI Engineer
+EXPECTED SALARY: 700000
+NOTICE PERIOD: Immediate

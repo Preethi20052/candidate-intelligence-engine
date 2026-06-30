@@ -5,9 +5,21 @@ import os
 import sys
 import tempfile
 import pathlib
+import importlib
 
-# Add backend to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../backend')))
+# Add backend to path — always insert fresh so reloads work
+backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../backend'))
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
+
+# Force reload all backend modules so Streamlit never uses stale cache
+import app.extractors.resume_parser as _rp; importlib.reload(_rp)
+import app.extractors.csv_extractor as _ce; importlib.reload(_ce)
+import app.extractors.json_extractor as _je; importlib.reload(_je)
+import app.merge_engine.merger as _me; importlib.reload(_me)
+import app.normalizers.base as _nb; importlib.reload(_nb)
+import app.projection.projector as _pp; importlib.reload(_pp)
+
 from app.extractors.resume_parser import ResumeParser
 from app.extractors.csv_extractor import CSVExtractor
 from app.extractors.json_extractor import JSONExtractor
@@ -148,9 +160,33 @@ elif choice == "Upload & Process":
                         tmp_path = tmp.name
                     if ext == '.csv':
                         records = CSVExtractor.extract(tmp_path)
+                        # Get resume candidate name for matching
+                        resume_name = None
+                        for p in profiles:
+                            if p.get('source_type') == 'resume' and p.get('full_name') and p.get('full_name') != 'Unknown':
+                                resume_name = p['full_name'].lower().strip()
+                                break
+                        
+                        matched = []
                         for r in records:
-                            r['source_type'] = 'recruiter_csv'
-                            profiles.append(r)
+                            row_name = (r.get('full_name') or r.get('name') or '').lower().strip()
+                            # If resume name found, only add matching CSV rows
+                            if resume_name:
+                                if any(part in row_name for part in resume_name.split()) or \
+                                   any(part in resume_name for part in row_name.split()):
+                                    r['source_type'] = 'recruiter_csv'
+                                    matched.append(r)
+                            else:
+                                # No resume — take all rows
+                                r['source_type'] = 'recruiter_csv'
+                                matched.append(r)
+                        
+                        if not matched and records:
+                            # Fallback: if no match found, take first row
+                            records[0]['source_type'] = 'recruiter_csv'
+                            matched.append(records[0])
+                        
+                        profiles.extend(matched)
                     elif ext == '.json':
                         records = JSONExtractor.extract(tmp_path)
                         for r in records:
@@ -185,6 +221,12 @@ elif choice == "Upload & Process":
                 st.progress(100)
                 st.success("Pipeline executed successfully!")
                 st.info("Navigate to 'Results & Analytics' to view the canonical profile.")
+                
+                # Debug: show what each source produced
+                with st.expander("🔍 Debug: Raw Profiles Before Merge"):
+                    for p in profiles:
+                        st.write(f"**Source:** `{p.get('source_type')}`")
+                        st.json({k: v for k, v in p.items() if k != 'source_type'})
         else:
             st.warning("Please upload at least one file or provide a URL.")
 
