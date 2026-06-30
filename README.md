@@ -9,6 +9,12 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-Frontend-FF4B4B.svg)
 ![Pydantic](https://img.shields.io/badge/Pydantic-Validation-E92063.svg)
 
+## Live Demo
+
+**Streamlit Application:**  
+https://preethi-candidate-engine.streamlit.app/
+
+
 ---
 
 # Project Overview
@@ -88,7 +94,7 @@ Final JSON Output
 
 ---
 
-# Core Capabilities
+## Core Capabilities
 
 - Multi-source candidate ingestion
 - Resume parsing
@@ -102,10 +108,11 @@ Final JSON Output
 - Canonical candidate profile
 - Field-level provenance tracking
 - Confidence scoring
+- Runtime JSON/YAML configuration
+- Dynamic field mapping
 - Runtime configurable projection
 - Configurable output schema
-- Pydantic validation
-- Explainable decision making
+- Explainable processing
 - FastAPI REST API
 - Interactive Streamlit dashboard
 
@@ -254,27 +261,20 @@ Generated Output
 
 ---
 
-# Dashboard Features
-
-The Streamlit dashboard provides a simple and professional interface for interacting with the pipeline.
-
-It includes:
+## Dashboard Features
 
 - Home Dashboard
-- Upload & Process Page
-- Results & Analytics Page
+- Upload & Process
+- Results Dashboard
 - Configuration Page
 - Candidate Overview
-- Canonical Profile Viewer
+- Internal Canonical Profile
 - Projected JSON Viewer
-- Runtime Configuration Selection
-- AI Insights Panel
 - Processing Pipeline Visualization
 - Validation Status
 - Confidence Summary
-- Source Comparison
+- AI Insights
 - JSON Download
-- PDF Report Download
 - Light/Dark Theme Toggle
 
 ---
@@ -408,21 +408,6 @@ Tests cover:
 - Projection layer
 - Validation
 - API endpoints
-
----
-
-# Screenshots
-
-Include screenshots of:
-
-- Home Dashboard
-- Upload & Process
-- Results & Analytics
-- Configuration Page
-- Canonical Profile
-- Projected JSON Output
-- AI Insights
-- Validation Results
 
 ---
 
