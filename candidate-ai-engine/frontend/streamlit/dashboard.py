@@ -173,8 +173,8 @@ elif choice == "Upload & Process":
                             row_name = (r.get('full_name') or r.get('name') or '').lower().strip()
                             # If resume name found, only add matching CSV rows
                             if resume_name:
-                                if any(part in row_name for part in resume_name.split()) or \
-                                   any(part in resume_name for part in row_name.split()):
+                                overlap = [p for p in resume_name.split() if p in row_name.split() and len(p) > 1]
+                                if overlap:
                                     r['source_type'] = 'recruiter_csv'
                                     matched.append(r)
                             else:

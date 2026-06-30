@@ -87,8 +87,14 @@ class Normalizer:
     @staticmethod
     def extract_emails(text: str) -> List[str]:
         """Extract and deduplicate all valid emails from arbitrary text."""
+        # Pre-process text to fix common PDF extraction glitches
+        clean_text = text.replace('\u200b', '')  # Remove zero-width spaces
+        clean_text = re.sub(r'mailto:', ' ', clean_text, flags=re.IGNORECASE)
+        # Fix spaces or newlines around @ that happen in PDFs (e.g. "name @ gmail.com")
+        clean_text = re.sub(r'\s*@\s*', '@', clean_text)
+        
         pattern = r'[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}'
-        raw = re.findall(pattern, text)
+        raw = re.findall(pattern, clean_text)
         seen, result = set(), []
         for e in raw:
             norm = Normalizer.normalize_email(e)
