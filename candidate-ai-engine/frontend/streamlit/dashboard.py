@@ -285,10 +285,80 @@ elif choice == "Results & Analytics":
             st.json(dynamic_projection)
             
             st.divider()
-            st.subheader("AI Insights")
-            st.info("💡 Data processed dynamically from your diverse uploads.")
-            provenance = st.session_state.canonical_profile.get('field_provenance', {})
-            st.metric(label="Total Fields Extracted", value=len(provenance))
+            st.subheader("🧠 AI Insights")
+
+            canonical = st.session_state.canonical_profile
+            provenance = canonical.get("field_provenance", {})
+            overall_confidence = canonical.get("overall_confidence", 0.0)
+
+            # --- Sources Processed ---
+            sources_seen = set()
+            for prov in provenance.values():
+                src = prov.get("source", "")
+                if src:
+                    sources_seen.add(src)
+            sources_count = max(len(sources_seen), 1)
+
+            # --- Total Fields Extracted ---
+            total_fields = len(provenance)
+
+            # --- Overall Confidence as % ---
+            confidence_pct = int(round(overall_confidence * 100))
+
+            # --- Validation Status ---
+            required_fields = ["full_name", "emails", "phones"]
+            all_present = all(canonical.get(f) for f in required_fields)
+            validation_status = "Passed" if all_present else "Failed"
+
+            # --- Data Quality (deterministic) ---
+            optional_fields_all = [
+                "skills", "location", "education", "current_role",
+                "current_company", "notice_period", "preferred_role",
+                "experience_years", "expected_salary", "notes"
+            ]
+            filled_optional = sum(1 for f in optional_fields_all if canonical.get(f))
+            completeness = (filled_optional / len(optional_fields_all)) * 100
+            if completeness >= 80 and confidence_pct >= 85:
+                data_quality = "Excellent"
+            elif completeness >= 60 and confidence_pct >= 70:
+                data_quality = "Good"
+            elif completeness >= 40:
+                data_quality = "Fair"
+            else:
+                data_quality = "Poor"
+
+            # --- Missing Optional Fields ---
+            optional_display = {
+                "linkedin_url": "LinkedIn URL",
+                "github_url": "GitHub URL",
+                "certifications": "Certifications",
+                "expected_salary": "Expected Salary",
+                "experience_years": "Experience Years",
+                "notice_period": "Notice Period",
+            }
+            missing_optional = [
+                label for key, label in optional_display.items()
+                if not canonical.get(key)
+            ]
+            missing_text = ", ".join(missing_optional) if missing_optional else "None"
+
+            # --- Render the card ---
+            val_icon = "✅" if validation_status == "Passed" else "❌"
+            quality_colors = {
+                "Excellent": "🟢", "Good": "🔵", "Fair": "🟡", "Poor": "🔴"
+            }
+            quality_icon = quality_colors.get(data_quality, "⚪")
+
+            st.markdown(f"""
+| Metric | Value |
+|---|---|
+| 📄 Sources Processed | {sources_count} |
+| 📋 Total Fields Extracted | {total_fields} |
+| 🎯 Overall Confidence | {confidence_pct}% |
+| {val_icon} Validation Status | {validation_status} |
+| {quality_icon} Data Quality | {data_quality} |
+| ⚠️ Missing Optional Fields | {missing_text} |
+""")
     else:
         st.info("No profile processed yet. Please upload files in 'Upload & Process'.")
 
