@@ -249,8 +249,40 @@ elif choice == "Results & Analytics":
         with col2:
             st.subheader("Projected JSON (The Twist)")
             st.warning("Dynamic runtime output: Renamed keys, omitted provenance, strict subsetting.")
-            if "projected_profile" in st.session_state:
-                st.json(st.session_state.projected_profile)
+            
+            proj_mode = st.radio(
+                "Select Runtime Configuration:", 
+                ["Output A (Default Schema)", "Output B (Custom Twist)"], 
+                horizontal=True
+            )
+            
+            if proj_mode == "Output A (Default Schema)":
+                current_proj_config = {
+                    "fields": [
+                        {"path": "candidate_name", "from": "full_name"},
+                        {"path": "primary_email", "from": "emails[0]"},
+                        {"path": "contact_number", "from": "phones[0]"},
+                        {"path": "core_skills", "from": "skills"}
+                    ],
+                    "include_provenance": True,
+                    "include_confidence": True,
+                    "on_missing": "null"
+                }
+            else:
+                current_proj_config = {
+                    "fields": [
+                        {"path": "candidate_full_name", "from": "full_name"},
+                        {"path": "primary_contact_email", "from": "emails[0]"},
+                        {"path": "verified_phone", "from": "phones[0]"}
+                    ],
+                    "include_provenance": False,
+                    "include_confidence": False,
+                    "on_missing": "omit"
+                }
+            
+            # Project dynamically based on UI selection
+            dynamic_projection = ProjectionEngine.project(st.session_state.canonical_profile, current_proj_config)
+            st.json(dynamic_projection)
             
             st.divider()
             st.subheader("AI Insights")
