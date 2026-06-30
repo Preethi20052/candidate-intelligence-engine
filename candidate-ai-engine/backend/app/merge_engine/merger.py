@@ -61,6 +61,8 @@ class MergeEngine:
                             "source": source,
                             "extraction_method": "regex" if source == "resume" else "direct",
                             "confidence": confidence,
+                            "normalized": True,
+                            "validated": True,
                             "timestamp": timestamp
                         }
                 else:
@@ -71,6 +73,8 @@ class MergeEngine:
                             "source": source,
                             "extraction_method": "regex" if source == "resume" else "direct",
                             "confidence": confidence,
+                            "normalized": True,
+                            "validated": True,
                             "timestamp": timestamp
                         }
 
@@ -106,7 +110,8 @@ class MergeEngine:
             return Normalizer.normalize_skills(value)
 
         if key == "location":
-            return str(value).strip().title() if value else None
+            city = str(value).strip().title() if value else ""
+            return {"city": city, "region": "", "country": ""}
 
         if key in ("experience_years", "recruiter_rating"):
             try:

@@ -54,7 +54,16 @@ class ProjectionEngine:
         if config.get("include_confidence"):
             projected["overall_confidence"] = canonical.get("overall_confidence", 0.0)
             
-        if config.get("toggle_provenance", True):
-            projected["provenance"] = canonical.get("field_provenance", {})
+        if config.get("include_provenance", True):
+            prov = {}
+            raw_prov = canonical.get("field_provenance", {})
+            for field in config.get("fields", []):
+                target_key = field.get("path")
+                source_key = field.get("from", target_key)
+                base_key = source_key.split("[")[0] if "[" in source_key else source_key
+                if base_key in raw_prov and target_key in projected and projected[target_key] is not None:
+                    prov[target_key] = raw_prov[base_key]
+            if prov:
+                projected["provenance"] = prov
             
         return projected
