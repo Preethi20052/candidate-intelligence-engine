@@ -145,14 +145,17 @@ class Normalizer:
         Extract all phone numbers from arbitrary text.
         Handles: Indian (10-digit), international (+CC), US, embedded in text.
         """
+        # Pre-process: remove URLs to avoid matching digits inside LinkedIn/GitHub links
+        clean_text = re.sub(r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9.\-]+\.com[^\s]*)', ' ', text)
+
         patterns = [
-            r'\+?\d{1,3}[\s\-.]?\(?\d{2,4}\)?[\s\-.]?\d{3,4}[\s\-.]?\d{3,4}',  # International
+            r'(?<!\w)\+?\d{1,3}[\s\-.]?\(?\d{2,4}\)?[\s\-.]?\d{3,4}[\s\-.]?\d{3,4}(?!\w)',  # International
             r'\b[6-9]\d{9}\b',   # Indian 10-digit mobile (starts 6-9)
             r'\b0\d{10}\b',      # Indian with leading 0
         ]
         seen, result = set(), []
         for pattern in patterns:
-            for match in re.finditer(pattern, text):
+            for match in re.finditer(pattern, clean_text):
                 raw = match.group().strip()
                 norm = Normalizer.normalize_phone(raw)
                 if norm and norm not in seen:
