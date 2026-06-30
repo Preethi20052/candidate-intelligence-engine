@@ -177,6 +177,15 @@ All 3 unit tests cover:
 
 ---
 
+# Live Demo
+
+Try the deployed application here:
+
+**Streamlit App:**  
+https://preethi-candidate-engine.streamlit.app/
+
+---
+
 ## License
 
 This project is licensed under the **MIT License**.
