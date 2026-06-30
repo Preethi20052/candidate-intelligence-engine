@@ -160,10 +160,12 @@ class ResumeParser:
         stem = re.sub(r'\.[a-zA-Z0-9]+$', '', filename).strip()
         # Replace underscores, hyphens, dots with spaces
         stem = re.sub(r'[_\-.]', ' ', stem)
-        # Remove common generic words
+        # Remove common generic words and job titles
         stem = re.sub(
             r'\b(resume|cv|curriculum|vitae|updated|new|final|copy'
-            r'|\d{4}|\d{2})\b',
+            r'|engineer|developer|designer|manager|intern|fresher|analyst'
+            r'|software|backend|frontend|fullstack|data|ai|ml|tech'
+            r'|\d{4}|\d{2}|\d{8})\b',
             '', stem, flags=re.IGNORECASE
         ).strip()
         # Clean up extra spaces
