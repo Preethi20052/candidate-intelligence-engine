@@ -165,6 +165,7 @@ class ResumeParser:
             r'\b(resume|cv|curriculum|vitae|updated|new|final|copy'
             r'|engineer|developer|designer|manager|intern|fresher|analyst'
             r'|software|backend|frontend|fullstack|data|ai|ml|tech'
+            r'|flowcv|novoresume|canva|zety|europass'
             r'|\d{4}|\d{2}|\d{8})\b',
             '', stem, flags=re.IGNORECASE
         ).strip()
