@@ -40,62 +40,67 @@ The final output is a configurable JSON profile generated without modifying appl
 
 # System Architecture
 
-```
-                           Candidate Intelligence Engine
+```mermaid
+graph TD
+    classDef layer fill:#1E293B,stroke:#334155,stroke-width:2px,color:#fff,rx:8px,ry:8px;
+    classDef box fill:#fff,stroke:#CBD5E1,stroke-width:2px,color:#0F172A,rx:4px,ry:4px,font-weight:bold;
+    classDef db fill:#EFF6FF,stroke:#3B82F6,stroke-width:2px,color:#1D4ED8,rx:10px,ry:10px,font-weight:bold;
 
-+--------------------------------------------------------------------------------+
-|                                 Streamlit Dashboard                            |
-|--------------------------------------------------------------------------------|
-| Upload Resume | Upload Recruiter CSV | Upload ATS JSON | Runtime Configuration |
-| Results | AI Insights | Canonical Profile | Projected JSON | Downloads          |
-+----------------------------------------+---------------------------------------+
-                                         |
-                                         | HTTP Requests
-                                         ▼
-+--------------------------------------------------------------------------------+
-|                                  FastAPI Backend                               |
-|--------------------------------------------------------------------------------|
-|                           REST API & Request Handling                          |
-+----------------------------------------+---------------------------------------+
-                                         |
-                                         ▼
-+--------------------------------------------------------------------------------+
-|                           Candidate Processing Pipeline                        |
-|--------------------------------------------------------------------------------|
-| 1. Source Detection                                                     |
-| 2. Data Extraction                                                      |
-| 3. Data Normalization                                                   |
-| 4. Canonicalization                                                     |
-| 5. Entity Resolution                                                    |
-| 6. Conflict Resolution                                                  |
-| 7. Confidence Scoring                                                   |
-| 8. Provenance Tracking                                                  |
-| 9. Runtime Projection                                                   |
-|10. Pydantic Validation                                                  |
-+----------------------------------------+---------------------------------------+
-                                         |
-                                         ▼
-+--------------------------------------------------------------------------------+
-|                               Internal Canonical Profile                       |
-|--------------------------------------------------------------------------------|
-| Full Name | Email | Phone | Skills | Education | Experience | Location         |
-| Confidence Score | Provenance | Metadata | Source Information                  |
-+----------------------------------------+---------------------------------------+
-                                         |
-                                         ▼
-+--------------------------------------------------------------------------------+
-|                              Runtime Projection Layer                          |
-|--------------------------------------------------------------------------------|
-| Dynamic Field Selection | Field Renaming | Missing Value Policy                |
-| Include/Exclude Provenance | Include/Exclude Confidence                        |
-+----------------------------------------+---------------------------------------+
-                                         |
-                                         ▼
-+--------------------------------------------------------------------------------+
-|                                 Final Output                                   |
-|--------------------------------------------------------------------------------|
-| Validated JSON | JSON Download | Dashboard Visualizations                      |
-+--------------------------------------------------------------------------------+
+    subgraph INGESTION ["Data Ingestion Layer"]
+        direction LR
+        CSV[CSV Extractor]:::box
+        ATS[ATS JSON Extractor]:::box
+        GH[GitHub Extractor]:::box
+        RES[Resume Extractor]:::box
+    end
+    class INGESTION layer
+
+    subgraph CLEANING ["Data Cleaning & Normalizers"]
+        PHONE[Phone Normalizer<br/>E.164]:::box
+        DATE[Date Normalizer<br/>YYYY-MM]:::box
+        COUNTRY[Country Normalizer]:::box
+    end
+    class CLEANING layer
+
+    subgraph MERGE ["Identity & Merge Engine"]
+        ID[Identity Resolution<br/>Email / Phone+Name]:::box
+        CONF[Conflict Resolution<br/>Priority Config]:::box
+        SCORE[Confidence Scorer]:::box
+        PROV[Provenance Tracker]:::box
+    end
+    class MERGE layer
+
+    subgraph PROJECTION ["Projection & Validation"]
+        direction LR
+        RULES[Schema Rules]:::box
+        PROJ[Dynamic JSON Projector]:::box
+        VAL[Schema Validator]:::box
+    end
+    class PROJECTION layer
+
+    CFG[(config.json)]:::db
+    OUT[(output.json)]:::db
+
+    CSV -->|RawRecord| CLEANING
+    ATS -->|RawRecord| CLEANING
+    GH -->|RawRecord| CLEANING
+    RES -->|RawRecord| CLEANING
+
+    PHONE -.-> ID
+    DATE -.-> ID
+    COUNTRY -.-> ID
+
+    ID --> CONF
+    CONF --> SCORE
+    SCORE --> PROV
+
+    PROV -->|CanonicalProfile| PROJ
+    CFG -->|JSON Paths| PROJ
+    CFG -->|Schema Rules| RULES
+    RULES --> VAL
+    PROJ -->|Projected JSON| VAL
+
+    VAL -->|Validated Output| OUT
 ```
 
 ---
